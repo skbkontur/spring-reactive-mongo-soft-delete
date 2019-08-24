@@ -3,23 +3,24 @@ package ru.it.zoo.reactive
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.UpdateOptions
 import com.mongodb.client.result.DeleteResult
+import com.mongodb.client.result.UpdateResult
 import com.mongodb.reactivestreams.client.MongoCollection
 import org.bson.Document
 import org.springframework.dao.InvalidDataAccessApiUsageException
 import org.springframework.data.mapping.context.MappingContext
 import org.springframework.data.mongodb.ReactiveMongoDatabaseFactory
-import org.springframework.data.mongodb.core.MongoAction
-import org.springframework.data.mongodb.core.MongoActionOperation
-import org.springframework.data.mongodb.core.ReactiveMongoTemplate
+import org.springframework.data.mongodb.core.*
 import org.springframework.data.mongodb.core.convert.MongoConverter
 import org.springframework.data.mongodb.core.convert.QueryMapper
 import org.springframework.data.mongodb.core.convert.UpdateMapper
 import org.springframework.data.mongodb.core.mapping.MongoPersistentEntity
 import org.springframework.data.mongodb.core.mapping.MongoPersistentProperty
+import org.springframework.data.mongodb.core.query.Collation
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.util.Assert
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 /**
@@ -89,6 +90,43 @@ class ReactiveMongoSoftDeleteTemplate(
         }.map {
             updateToDeleteResultConverter.convert(it)
         }.next()
+    }
+
+
+    override fun doUpdate(
+        collectionName: String,
+        query: Query,
+        update: Update?,
+        entityClass: Class<*>?,
+        upsert: Boolean,
+        multi: Boolean
+    ): Mono<UpdateResult> {
+        query.addCriteria(REMOVE_CRITERIA)
+        return super.doUpdate(collectionName, query, update, entityClass, upsert, multi)
+    }
+
+    override fun <T : Any?> doFindAndModify(
+        collectionName: String,
+        query: Document,
+        fields: Document,
+        sort: Document,
+        entityClass: Class<T>,
+        update: Update,
+        options: FindAndModifyOptions
+    ): Mono<T> {
+        query.merge(REMOVE_CRITERIA.criteriaObject)
+        return super.doFindAndModify(collectionName, query, fields, sort, entityClass, update, options)
+    }
+
+    override fun <T : Any?> doFindOne(
+        collectionName: String,
+        query: Document,
+        fields: Document?,
+        entityClass: Class<T>,
+        collation: Collation?
+    ): Mono<T> {
+        query.merge(REMOVE_CRITERIA.criteriaObject)
+        return super.doFindOne(collectionName, query, fields, entityClass, collation)
     }
 
     private fun prepareCollection(
