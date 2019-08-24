@@ -20,7 +20,6 @@ import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.util.Assert
-import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 /**
@@ -80,7 +79,6 @@ class ReactiveMongoSoftDeleteTemplate(
             val writeConcernToUse = prepareWriteConcern(mongoAction)
             val collectionToUse = prepareCollection(collection, writeConcernToUse)
 
-
             val updateOptions = UpdateOptions()
             query.collation.map { it.toMongoCollation() }.ifPresent {
                 updateOptions.collation(it)
@@ -91,7 +89,6 @@ class ReactiveMongoSoftDeleteTemplate(
             updateToDeleteResultConverter.convert(it)
         }.next()
     }
-
 
     override fun doUpdate(
         collectionName: String,
