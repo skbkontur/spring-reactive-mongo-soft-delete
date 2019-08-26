@@ -1,4 +1,4 @@
-##Spring-mongo-soft-delete
+## Spring-mongo-soft-delete
 
 * Configurable fields for deletion marks
 * Update documents instead a full deletion
