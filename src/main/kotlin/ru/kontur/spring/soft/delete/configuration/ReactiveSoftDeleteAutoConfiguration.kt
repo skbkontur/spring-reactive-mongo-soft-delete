@@ -13,7 +13,7 @@ import ru.kontur.spring.soft.delete.reactive.ReactiveMongoSoftDeleteTemplate
  * @author kostya05983
  */
 @ConditionalOnClass(ReactiveMongoSoftDeleteTemplate::class)
-@ConditionalOnProperty(prefix = "ru.it.zoo.soft-delete", name = ["enabled"], havingValue = "true")
+@ConditionalOnProperty(prefix = "ru.kontur.soft-delete", name = ["enabled"], havingValue = "true")
 @EnableConfigurationProperties(ReactiveSoftDeleteProperties::class)
 class ReactiveSoftDeleteAutoConfiguration {
 

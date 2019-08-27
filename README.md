@@ -11,11 +11,10 @@
 
 ```yaml
 ru:
-    it:
-      zoo:
-        soft-delete:
-         enabled: true
-         deleteField: deleted
-         dateField: deletedAt
+    kontur:
+      soft-delete:
+        enabled: true
+        deleteField: deleted
+        dateField: deletedAt
 ```
 
