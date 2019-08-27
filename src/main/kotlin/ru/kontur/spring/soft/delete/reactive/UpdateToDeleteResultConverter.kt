@@ -1,4 +1,4 @@
-package ru.it.zoo.reactive
+package ru.kontur.spring.soft.delete.reactive
 
 import com.mongodb.client.result.DeleteResult
 import com.mongodb.client.result.UpdateResult

@@ -1,4 +1,4 @@
-package ru.it.zoo.configuration
+package ru.kontur.spring.soft.delete.configuration
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 

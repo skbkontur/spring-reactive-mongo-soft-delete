@@ -1,4 +1,4 @@
-package ru.it.zoo.configuration
+package ru.kontur.spring.soft.delete.configuration
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.data.mongodb.ReactiveMongoDatabaseFactory
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate
 import org.springframework.data.mongodb.core.convert.MongoConverter
-import ru.it.zoo.reactive.ReactiveMongoSoftDeleteTemplate
+import ru.kontur.spring.soft.delete.reactive.ReactiveMongoSoftDeleteTemplate
 
 /**
  * @author kostya05983
@@ -22,6 +22,9 @@ class ReactiveSoftDeleteAutoConfiguration {
         mongoDatabaseFactory: ReactiveMongoDatabaseFactory,
         mongoConverter: MongoConverter
     ): ReactiveMongoTemplate {
-        return ReactiveMongoSoftDeleteTemplate(mongoDatabaseFactory, mongoConverter)
+        return ReactiveMongoSoftDeleteTemplate(
+            mongoDatabaseFactory,
+            mongoConverter
+        )
     }
 }
