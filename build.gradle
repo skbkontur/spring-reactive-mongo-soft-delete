@@ -32,6 +32,8 @@ dependencies {
     testCompile("org.springframework.boot:spring-boot-starter-test") {
         exclude module: 'junit'
     }
+    testImplementation group: 'org.testcontainers', name: 'testcontainers', version: '1.12.0'
+
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
     kapt("org.springframework.boot:spring-boot-configuration-processor")
