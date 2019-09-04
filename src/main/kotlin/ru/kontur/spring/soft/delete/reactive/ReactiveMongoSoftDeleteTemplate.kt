@@ -28,10 +28,10 @@ import reactor.core.publisher.Mono
  */
 class ReactiveMongoSoftDeleteTemplate(
         mongoDatabaseFactory: ReactiveMongoDatabaseFactory,
-        mongoConverter: MongoConverter
+        mongoConverter: MongoConverter?
 ) : ReactiveMongoTemplate(mongoDatabaseFactory, mongoConverter) {
-    private val mappingContext: MappingContext<out MongoPersistentEntity<*>, MongoPersistentProperty> =
-            mongoConverter.mappingContext
+    private val mappingContext: MappingContext<out MongoPersistentEntity<*>, MongoPersistentProperty>? =
+            mongoConverter?.mappingContext
     private val queryMapper: QueryMapper = QueryMapper(mongoConverter)
     private val updateMapper: UpdateMapper = UpdateMapper(mongoConverter)
     private var writeConcernOverride: WriteConcern? = null
@@ -149,7 +149,7 @@ class ReactiveMongoSoftDeleteTemplate(
     }
 
     private fun getPersistentEntity(type: Class<*>?): MongoPersistentEntity<*>? {
-        return if (type == null) null else mappingContext.getPersistentEntity(type)
+        return if (type == null) null else mappingContext?.getPersistentEntity(type)
     }
 
     private fun Document.merge(`in`: Document) {

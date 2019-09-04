@@ -1,0 +1,4 @@
+ru:
+  kontur:
+    soft-delete:
+      enabled: true
