@@ -27,19 +27,19 @@ import reactor.core.publisher.Mono
  * @author kostya05983
  */
 class ReactiveMongoSoftDeleteTemplate(
-        mongoDatabaseFactory: ReactiveMongoDatabaseFactory,
-        mongoConverter: MongoConverter?
+    mongoDatabaseFactory: ReactiveMongoDatabaseFactory,
+    mongoConverter: MongoConverter?
 ) : ReactiveMongoTemplate(mongoDatabaseFactory, mongoConverter) {
     private val mappingContext: MappingContext<out MongoPersistentEntity<*>, MongoPersistentProperty>? =
-            mongoConverter?.mappingContext
+        mongoConverter?.mappingContext
     private val queryMapper: QueryMapper = QueryMapper(mongoConverter)
     private val updateMapper: UpdateMapper = UpdateMapper(mongoConverter)
     private var writeConcernOverride: WriteConcern? = null
 
     private companion object {
         private val REMOVE_CRITERIA = Criteria().orOperator(
-                Criteria.where("deleted").exists(false),
-                Criteria.where("deleted").`is`(false)
+            Criteria.where("deleted").exists(false),
+            Criteria.where("deleted").`is`(false)
         )
 
         private val UPDATE_DEL = Update().apply {
@@ -53,9 +53,9 @@ class ReactiveMongoSoftDeleteTemplate(
     }
 
     override fun <T : Any?> doRemove(
-            collectionName: String,
-            query: Query?,
-            entityClass: Class<T>?
+        collectionName: String,
+        query: Query?,
+        entityClass: Class<T>?
     ): Mono<DeleteResult> {
         if (query == null) {
             throw InvalidDataAccessApiUsageException("Query passed in to remove can't be null!")
@@ -73,8 +73,8 @@ class ReactiveMongoSoftDeleteTemplate(
 
             val updateObj = updateMapper.getMappedObject(UPDATE_DEL.updateObject, entity)
             val mongoAction = MongoAction(
-                    writeConcernOverride, MongoActionOperation.UPDATE, collectionName, entityClass,
-                    updateObj, updateQuery
+                writeConcernOverride, MongoActionOperation.UPDATE, collectionName, entityClass,
+                updateObj, updateQuery
             )
 
             val writeConcernToUse = prepareWriteConcern(mongoAction)
@@ -92,36 +92,36 @@ class ReactiveMongoSoftDeleteTemplate(
     }
 
     override fun doUpdate(
-            collectionName: String,
-            query: Query,
-            update: Update?,
-            entityClass: Class<*>?,
-            upsert: Boolean,
-            multi: Boolean
+        collectionName: String,
+        query: Query,
+        update: Update?,
+        entityClass: Class<*>?,
+        upsert: Boolean,
+        multi: Boolean
     ): Mono<UpdateResult> {
         query.addCriteria(REMOVE_CRITERIA)
         return super.doUpdate(collectionName, query, update, entityClass, upsert, multi)
     }
 
     override fun <T : Any?> doFindAndModify(
-            collectionName: String,
-            query: Document,
-            fields: Document,
-            sort: Document,
-            entityClass: Class<T>,
-            update: Update,
-            options: FindAndModifyOptions
+        collectionName: String,
+        query: Document,
+        fields: Document,
+        sort: Document,
+        entityClass: Class<T>,
+        update: Update,
+        options: FindAndModifyOptions
     ): Mono<T> {
         query.merge(REMOVE_CRITERIA.criteriaObject)
         return super.doFindAndModify(collectionName, query, fields, sort, entityClass, update, options)
     }
 
     override fun <T : Any?> doFindOne(
-            collectionName: String,
-            query: Document,
-            fields: Document?,
-            entityClass: Class<T>,
-            collation: Collation?
+        collectionName: String,
+        query: Document,
+        fields: Document?,
+        entityClass: Class<T>,
+        collation: Collation?
     ): Mono<T> {
         query.merge(REMOVE_CRITERIA.criteriaObject)
         return super.doFindOne(collectionName, query, fields, entityClass, collation)
@@ -136,9 +136,20 @@ class ReactiveMongoSoftDeleteTemplate(
         return super.findAll(entityClass, collectionName)
     }
 
+    override fun <T : Any?> findDistinct(
+        query: Query,
+        field: String,
+        collectionName: String,
+        entityClass: Class<*>,
+        resultClass: Class<T>
+    ): Flux<T> {
+        query.addCriteria(REMOVE_CRITERIA)
+        return super.findDistinct(query, field, collectionName, entityClass, resultClass)
+    }
+
     private fun prepareCollection(
-            collection: MongoCollection<Document>,
-            writeConcernToUse: WriteConcern?
+        collection: MongoCollection<Document>,
+        writeConcernToUse: WriteConcern?
     ): MongoCollection<Document> {
         var collectionToUse = collection
 

@@ -1,6 +1,7 @@
 package ru.kontur.spring.soft.delete.reactive
 
 import org.assertj.core.api.Assertions.assertThat
+import org.bson.types.ObjectId
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -52,16 +53,37 @@ internal class ReactiveMongoSoftDeleteTemplateTest : SpringContainerBaseTest() {
 
     @Test
     fun testFind() {
-        val id = UUID.randomUUID()
+        val obj = saveObject()
+
+        val query = Query().addCriteria(Criteria.where("_id").`is`(obj.id))
+        val found = reactiveMongoTemplate.find(query, TestObject::class.java).blockFirst()
+        assertThat(found).isNull()
+    }
+
+    @Test
+    fun testFindById() {
+        val obj = saveObject()
+        val isPresent = reactiveMongoTemplate.findById(obj.id, TestObject::class.java).blockOptional().isPresent
+        assertThat(isPresent).isFalse()
+    }
+
+    @Test
+    fun testFindDistinct() {
+        val obj = saveObject()
+        val query = Query().addCriteria(Criteria.where("_id").`is`(obj.id))
+        val found = reactiveMongoTemplate.findDistinct(
+            query, "param", TestObject::class.java,
+            String::class.java
+        ).blockFirst()
+        assertThat(found).isNull()
+    }
+
+    fun saveObject(): TestObject {
         val testObject = TestObject(
-            id = id.toString(),
+            id = ObjectId().toHexString(),
             param = "Test",
             deleted = true
         )
-        reactiveMongoTemplate.save(testObject).block()
-
-        val query = Query().addCriteria(Criteria.where("_id").`is`(id.toString()))
-        val found = reactiveMongoTemplate.find(query, TestObject::class.java).blockFirst()
-        assertThat(found).isNull()
+        return reactiveMongoTemplate.save(testObject).block()
     }
 }
