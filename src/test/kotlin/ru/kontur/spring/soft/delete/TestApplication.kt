@@ -1,4 +1,4 @@
-package ru.kontur.spring.soft.delete.application
+package ru.kontur.spring.soft.delete
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 

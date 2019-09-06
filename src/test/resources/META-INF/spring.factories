@@ -1,0 +1,5 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+ru.kontur.spring.soft.delete.reactive.configuration.MongoDbConfiguration
+
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  ru.kontur.spring.soft.delete.configuration.ReactiveSoftDeleteAutoConfiguration

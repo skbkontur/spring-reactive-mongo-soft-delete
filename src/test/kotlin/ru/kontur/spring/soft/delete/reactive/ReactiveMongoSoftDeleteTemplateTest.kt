@@ -26,9 +26,8 @@ import ru.kontur.spring.soft.delete.reactive.core.TestConfiguration
 import java.util.UUID
 
 @ExtendWith(SpringExtension::class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("integration")
-@ImportAutoConfiguration
 internal class ReactiveMongoSoftDeleteTemplateTest : SpringContainerBaseTest() {
 
     private companion object {
@@ -40,7 +39,6 @@ internal class ReactiveMongoSoftDeleteTemplateTest : SpringContainerBaseTest() {
 
     @BeforeEach
     fun setUp() {
-
         reactiveMongoTemplate.dropCollection(COLLECTION_NAME).block()
         reactiveMongoTemplate.createCollection(COLLECTION_NAME).block()
     }
