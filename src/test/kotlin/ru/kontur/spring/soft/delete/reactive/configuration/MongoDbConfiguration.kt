@@ -36,10 +36,10 @@ class MongoDbConfiguration : EnvironmentPostProcessor {
     }
 
     companion object {
-        const val MONGO_ENABLED_PROPERTY = "kontur.realty.web.mongodb.enabled"
-        const val MONGO_LOGIN_PROPERTY = "kontur.realty.web.mongodb.login"
-        const val MONGO_PASSWORD_PROPERTY = "kontur.realty.web.mongodb.password"
-        const val MONGO_REPLICA_SET_PROPERTY = "kontur.realty.web.mongodb.replica-set"
-        const val MONGO_DATABASE_PROPERTY = "kontur.realty.web.mongodb.database"
+        const val MONGO_ENABLED_PROPERTY = "kontur.mongodb.enabled"
+        const val MONGO_LOGIN_PROPERTY = "kontur.mongodb.login"
+        const val MONGO_PASSWORD_PROPERTY = "kontur.mongodb.password"
+        const val MONGO_REPLICA_SET_PROPERTY = "kontur.mongodb.replica-set"
+        const val MONGO_DATABASE_PROPERTY = "kontur.mongodb.database"
     }
 }

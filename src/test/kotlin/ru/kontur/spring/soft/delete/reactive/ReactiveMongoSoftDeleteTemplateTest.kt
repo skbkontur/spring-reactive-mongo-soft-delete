@@ -51,7 +51,7 @@ internal class ReactiveMongoSoftDeleteTemplateTest : SpringContainerBaseTest() {
     )
 
     @Test
-    fun test() {
+    fun testFind() {
         val id = UUID.randomUUID()
         val testObject = TestObject(
             id = id.toString(),
