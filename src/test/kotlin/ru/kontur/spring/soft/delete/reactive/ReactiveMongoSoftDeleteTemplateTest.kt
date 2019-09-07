@@ -4,12 +4,12 @@ import org.assertj.core.api.Assertions.assertThat
 import org.bson.types.ObjectId
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate
+import org.springframework.data.mongodb.core.mapping.Document
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
@@ -17,6 +17,9 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import ru.kontur.spring.soft.delete.reactive.core.SpringContainerBaseTest
 
+/**
+ * @author Konstantin Volivach
+ */
 @ExtendWith(SpringExtension::class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("integration")
@@ -35,6 +38,7 @@ internal class ReactiveMongoSoftDeleteTemplateTest : SpringContainerBaseTest() {
         reactiveMongoTemplate.createCollection(COLLECTION_NAME).block()
     }
 
+    @Document(collection = COLLECTION_NAME)
     data class TestObject(
         @field:Id
         val id: String,
@@ -97,14 +101,10 @@ internal class ReactiveMongoSoftDeleteTemplateTest : SpringContainerBaseTest() {
 
     @Test
     fun testFindAndReplace() {
-        data class Update(
-            val param: String
-        )
-
         val obj = saveDeletedObject()
         val query = Query().addCriteria(Criteria.where("_id").`is`(obj.id))
         val found = reactiveMongoTemplate.findAndReplace(
-            query, Update("te")
+            query, TestObject(obj.id, "te", false)
         ).block()
         assertThat(found).isNull()
     }
@@ -141,7 +141,7 @@ internal class ReactiveMongoSoftDeleteTemplateTest : SpringContainerBaseTest() {
         val obj = saveDeletedObject()
         val query = Query().addCriteria(Criteria.where("_id").`is`(obj.id))
         val found = reactiveMongoTemplate.upsert(query, Update(), TestObject::class.java).block()
-        assertThat(found.matchedCount).isEqualTo(0)
+        assertThat(found.modifiedCount).isEqualTo(1)
     }
 
     @Test
@@ -153,7 +153,7 @@ internal class ReactiveMongoSoftDeleteTemplateTest : SpringContainerBaseTest() {
     }
 
     @Test
-    fun testUpdateMulti() {
+    fun testUpdateMultiNotFound() {
         val obj = saveDeletedObject()
         val query = Query().addCriteria(Criteria.where("_id").`is`(obj.id))
         val found = reactiveMongoTemplate.updateMulti(query, Update(), TestObject::class.java).block()
@@ -161,15 +161,58 @@ internal class ReactiveMongoSoftDeleteTemplateTest : SpringContainerBaseTest() {
     }
 
     @Test
-    fun testRemove() {
-
+    fun testUpdateMulti() {
+        saveObject()
+        val saveObject = saveObject()
+        saveDeletedObject()
+        val query = Query().addCriteria(Criteria.where("_id").`is`(saveObject.id))
+        val found = reactiveMongoTemplate.updateMulti(query, Update(), TestObject::class.java).block()
+        assertThat(found.matchedCount).isEqualTo(1)
     }
 
     @Test
-    fun testFindAll() {
+    fun testRemoveNotFound() {
         val obj = saveDeletedObject()
+        val query = Query().addCriteria(Criteria.where("_id").`is`(obj.id))
+        val removed = reactiveMongoTemplate.remove(query, obj::class.java).block()
+        assertThat(removed.wasAcknowledged()).isTrue()
+        assertThat(removed.deletedCount).isEqualTo(0)
+    }
+
+    @Test
+    fun testRemove() {
+        val obj = saveObject()
+        val query = Query().addCriteria(Criteria.where("_id").`is`(obj.id))
+        val removed = reactiveMongoTemplate.remove(query, obj::class.java).block()
+        assertThat(removed.wasAcknowledged()).isTrue()
+        assertThat(removed.deletedCount).isEqualTo(1)
+        val newQuery = Query().addCriteria(Criteria.where("_id").`is`(obj.id))
+        val find = reactiveMongoTemplate.find(newQuery, obj::class.java).blockFirst()
+        assertThat(find).isNull()
+    }
+
+    @Test
+    fun testFindAllNotFound() {
+        saveDeletedObject()
         val found = reactiveMongoTemplate.findAll(TestObject::class.java).blockFirst()
         assertThat(found).isNull()
+    }
+
+    @Test
+    fun testFindAllFindOne() {
+        saveDeletedObject()
+        saveObject()
+        val found = reactiveMongoTemplate.findAll(TestObject::class.java).count().block()
+        assertThat(found).isEqualTo(1)
+    }
+
+    @Test
+    fun testFindAllNotOne() {
+        saveDeletedObject()
+        saveObject()
+        saveObject()
+        val found = reactiveMongoTemplate.findAll(TestObject::class.java).count().block()
+        assertThat(found).isEqualTo(2)
     }
 
     fun saveObject(): TestObject {

@@ -6,7 +6,9 @@ import com.mongodb.client.result.DeleteResult
 import com.mongodb.client.result.UpdateResult
 import com.mongodb.reactivestreams.client.MongoCollection
 import org.bson.Document
+import org.bson.conversions.Bson
 import org.springframework.dao.InvalidDataAccessApiUsageException
+import org.springframework.data.convert.EntityReader
 import org.springframework.data.mapping.context.MappingContext
 import org.springframework.data.mongodb.ReactiveMongoDatabaseFactory
 import org.springframework.data.mongodb.core.*
@@ -15,6 +17,8 @@ import org.springframework.data.mongodb.core.convert.QueryMapper
 import org.springframework.data.mongodb.core.convert.UpdateMapper
 import org.springframework.data.mongodb.core.mapping.MongoPersistentEntity
 import org.springframework.data.mongodb.core.mapping.MongoPersistentProperty
+import org.springframework.data.mongodb.core.mapping.event.AfterConvertEvent
+import org.springframework.data.mongodb.core.mapping.event.AfterLoadEvent
 import org.springframework.data.mongodb.core.query.Collation
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
@@ -22,13 +26,15 @@ import org.springframework.data.mongodb.core.query.Update
 import org.springframework.util.Assert
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import ru.kontur.spring.soft.delete.callbacks.FindCallback
+import ru.kontur.spring.soft.delete.callbacks.ReactiveQueryCollectionCallback
 
 /**
  * @author kostya05983
  */
 class ReactiveMongoSoftDeleteTemplate(
     mongoDatabaseFactory: ReactiveMongoDatabaseFactory,
-    mongoConverter: MongoConverter?
+    private val mongoConverter: MongoConverter?
 ) : ReactiveMongoTemplate(mongoDatabaseFactory, mongoConverter) {
     private val mappingContext: MappingContext<out MongoPersistentEntity<*>, MongoPersistentProperty>? =
         mongoConverter?.mappingContext
@@ -63,18 +69,18 @@ class ReactiveMongoSoftDeleteTemplate(
 
         Assert.hasText(collectionName, "Collection name must not be null or empty!")
 
-        val queryObject = query.queryObject
+        query.addCriteria(REMOVE_CRITERIA)
         val entity = getPersistentEntity(entityClass)
 
         val updateToDeleteResultConverter = UpdateToDeleteResultConverter()
         return execute(collectionName) { collection ->
-            val updateQuery = queryMapper.getMappedObject(queryObject, entity)
-            updateQuery.merge(REMOVE_CRITERIA.criteriaObject)
+            val queryObj = queryMapper.getMappedObject(query.queryObject, entity)
 
             val updateObj = updateMapper.getMappedObject(UPDATE_DEL.updateObject, entity)
+
             val mongoAction = MongoAction(
                 writeConcernOverride, MongoActionOperation.UPDATE, collectionName, entityClass,
-                updateObj, updateQuery
+                updateObj, queryObj
             )
 
             val writeConcernToUse = prepareWriteConcern(mongoAction)
@@ -85,10 +91,26 @@ class ReactiveMongoSoftDeleteTemplate(
                 updateOptions.collation(it)
             }
 
-            collectionToUse.updateMany(queryObject, updateObj, updateOptions)
+            if (queryObj.containsKey("_id")) {
+                collectionToUse.updateOne(queryObj, updateObj, updateOptions)
+            } else {
+                collectionToUse.updateMany(queryObj, updateObj, updateOptions)
+            }
         }.map {
             updateToDeleteResultConverter.convert(it)
         }.next()
+    }
+
+    override fun <T : Any?> doFindAndRemove(
+        collectionName: String,
+        query: Document,
+        fields: Document,
+        sort: Document,
+        collation: Collation?,
+        entityClass: Class<T>
+    ): Mono<T> {
+        query.merge(REMOVE_CRITERIA.criteriaObject)
+        return super.doFindAndRemove(collectionName, query, fields, sort, collation, entityClass)
     }
 
     override fun doUpdate(
@@ -99,7 +121,9 @@ class ReactiveMongoSoftDeleteTemplate(
         upsert: Boolean,
         multi: Boolean
     ): Mono<UpdateResult> {
-        query.addCriteria(REMOVE_CRITERIA)
+        if (!upsert) {
+            query.addCriteria(REMOVE_CRITERIA)
+        }
         return super.doUpdate(collectionName, query, update, entityClass, upsert, multi)
     }
 
@@ -132,8 +156,14 @@ class ReactiveMongoSoftDeleteTemplate(
         return super.find(query, entityClass)
     }
 
-    override fun <T : Any?> findAll(entityClass: Class<T>, collectionName: String): Flux<T> { // TODO overriding
-        return super.findAll(entityClass, collectionName)
+    override fun <T : Any?> findAll(entityClass: Class<T>, collectionName: String): Flux<T?> { // TODO overriding
+        val document = Document()
+        document.merge(REMOVE_CRITERIA.criteriaObject)
+        return executeFindMultiInternal(
+            FindCallback(document), ReadDocumentCallback(
+                mongoConverter, entityClass, collectionName
+            ), collectionName
+        )
     }
 
     override fun <T : Any?> findDistinct(
@@ -145,6 +175,57 @@ class ReactiveMongoSoftDeleteTemplate(
     ): Flux<T> {
         query.addCriteria(REMOVE_CRITERIA)
         return super.findDistinct(query, field, collectionName, entityClass, resultClass)
+    }
+
+    override fun <S : Any?, T : Any?> findAndReplace(
+        query: Query,
+        replacement: S,
+        options: FindAndReplaceOptions,
+        entityType: Class<S>,
+        collectionName: String,
+        resultType: Class<T>
+    ): Mono<T> {
+        query.addCriteria(REMOVE_CRITERIA)
+        return super.findAndReplace(query, replacement, options, entityType, collectionName, resultType)
+    }
+
+    override fun exists(query: Query, entityClass: Class<*>?, collectionName: String): Mono<Boolean> {
+        query.addCriteria(REMOVE_CRITERIA)
+        return super.exists(query, entityClass, collectionName)
+    }
+
+    override fun count(query: Query, entityClass: Class<*>?, collectionName: String): Mono<Long> {
+        query.addCriteria(REMOVE_CRITERIA)
+        return super.count(query, entityClass, collectionName)
+    }
+
+    private fun <T> executeFindMultiInternal(
+        collectionCallback: ReactiveQueryCollectionCallback<Document>,
+        objectCallback: ru.kontur.spring.soft.delete.callbacks.DocumentCallback<T>,
+        collectionName: String
+    ): Flux<T?> {
+        return createFlux(collectionName) { collection ->
+            val findPublisher = collectionCallback.doInCollection(collection)
+            Flux.from(findPublisher).map { objectCallback.doWith(it) }
+        }
+    }
+
+    inner class ReadDocumentCallback<T>(
+        private val reader: EntityReader<in T, Bson>?,
+        private val type: Class<T>,
+        private val collectionName: String
+    ) : ru.kontur.spring.soft.delete.callbacks.DocumentCallback<T> {
+
+        override fun doWith(obj: Document?): T? {
+            if (obj != null) {
+                maybeEmitEvent(AfterLoadEvent(obj, type, collectionName))
+            }
+            val source: T? = reader?.read(type, obj)
+            if (source != null) {
+                maybeEmitEvent(AfterConvertEvent(obj, source, collectionName))
+            }
+            return source
+        }
     }
 
     private fun prepareCollection(

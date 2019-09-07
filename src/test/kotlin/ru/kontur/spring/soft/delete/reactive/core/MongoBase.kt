@@ -2,7 +2,6 @@ package ru.kontur.spring.soft.delete.reactive.core
 
 abstract class MongoBase {
 
-
     companion object {
         const val MONGODB_EXPOSED_PORT = 27017
         const val MONGODB_USERNAME = "test"

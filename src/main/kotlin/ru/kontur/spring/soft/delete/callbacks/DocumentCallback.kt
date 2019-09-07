@@ -1,4 +1,11 @@
 package ru.kontur.spring.soft.delete.callbacks
 
-interface DocumentCallback {
+import org.bson.Document
+
+/**
+ * @author Konstantin Volivach
+ */
+interface DocumentCallback<T> {
+
+    fun doWith(obj: Document?): T?
 }

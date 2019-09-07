@@ -14,7 +14,7 @@ import org.springframework.data.mongodb.core.convert.MongoConverter
 import ru.kontur.spring.soft.delete.reactive.ReactiveMongoSoftDeleteTemplate
 
 /**
- * @author kostya05983
+ * @author Konstantin Volivach
  */
 @ConditionalOnClass(ReactiveMongoTemplate::class)
 @ConditionalOnBean(ReactiveMongoTemplate::class)
