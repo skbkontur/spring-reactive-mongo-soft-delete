@@ -3,16 +3,83 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.3.41'
     id 'org.jetbrains.kotlin.plugin.spring' version '1.3.41'
     id "org.jlleitschuh.gradle.ktlint" version "8.2.0"
+    id "com.jfrog.bintray" version "1.8.4"
+    id "maven-publish"
 }
 
 apply plugin: 'io.spring.dependency-management'
 apply plugin: 'kotlin-kapt'
 apply plugin: 'idea'
 
-version '1.0-SNAPSHOT'
+version '1.1.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
+    jcenter()
+}
+
+def pomConfig = {
+    licenses {
+        license {
+            name "MIT LICENSE"
+            url "https://github.com/skbkontur/spring-reactive-mongo-soft-delete/blob/master/LICENSE"
+            distribution "repo"
+        }
+    }
+    developers {
+        developer {
+            id "kostya05983"
+            name "Konstantin Volivach"
+            email "kostya05983@mail.ru"
+        }
+    }
+
+    scm {
+        url "https://github.com/skbkontur/spring-reactive-mongo-soft-delete"
+    }
+}
+
+publishing {
+    publications {
+        mavenPublication(MavenPublication) {
+            from components.java
+            artifact sourcesJar {
+                classifier "sources"
+            }
+            artifact javadocJar {
+                classifier "javadoc"
+            }
+            groupId 'ru.kontur'
+            artifactId 'spring-reactive-mongo-soft-delete'
+            version '1.1.0-SNAPSHOT'
+            pom.withXml {
+                def root = asNode()
+                root.appendNode('description', 'Provide a soft delete to mongo template')
+                root.appendNode('name', 'spring-reactive-mongo-soft-delete')
+                root.appendNode('url', 'https://github.com/skbkontur/spring-reactive-mongo-soft-delete')
+                root.children().last() + pomConfig
+            }
+        }
+    }
+}
+
+bintray {
+    user = System.getProperty('bintray.user')
+    key = System.getProperty('bintray.key')
+    publications = ['mavenPublication']
+
+    pkg {
+        repo = 'kontur'
+        name = 'spring-reactive-mongo-soft-delete'
+        userOrg = 'kostya05983'
+        licenses = ['MIT']
+        vcsUrl = 'https://github.com/skbkontur/spring-reactive-mongo-soft-delete.git'
+        version {
+            name = '1.0.0'
+            desc = '1.0.0'
+            released  = new Date()
+        }
+    }
 }
 
 dependencyManagement {
@@ -51,4 +118,20 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+javadoc.failOnError = false
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
 }
