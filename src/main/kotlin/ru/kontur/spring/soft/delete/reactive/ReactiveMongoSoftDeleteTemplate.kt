@@ -34,10 +34,10 @@ import ru.kontur.spring.soft.delete.callbacks.ReactiveQueryCollectionCallback
  */
 class ReactiveMongoSoftDeleteTemplate(
     mongoDatabaseFactory: ReactiveMongoDatabaseFactory,
-    private val mongoConverter: MongoConverter?
+    private val mongoConverter: MongoConverter
 ) : ReactiveMongoTemplate(mongoDatabaseFactory, mongoConverter) {
     private val mappingContext: MappingContext<out MongoPersistentEntity<*>, MongoPersistentProperty>? =
-        mongoConverter?.mappingContext
+        mongoConverter.mappingContext
     private val queryMapper: QueryMapper = QueryMapper(mongoConverter)
     private val updateMapper: UpdateMapper = UpdateMapper(mongoConverter)
     private var writeConcernOverride: WriteConcern? = null
@@ -109,8 +109,9 @@ class ReactiveMongoSoftDeleteTemplate(
         collation: Collation?,
         entityClass: Class<T>
     ): Mono<T> {
-        query.merge(REMOVE_CRITERIA.criteriaObject)
-        return super.doFindAndRemove(collectionName, query, fields, sort, collation, entityClass)
+        val newQuery = Document(query)
+        newQuery.merge(REMOVE_CRITERIA.criteriaObject)
+        return super.doFindAndRemove(collectionName, newQuery, fields, sort, collation, entityClass)
     }
 
     override fun doUpdate(
@@ -136,8 +137,9 @@ class ReactiveMongoSoftDeleteTemplate(
         update: Update,
         options: FindAndModifyOptions
     ): Mono<T> {
-        query.merge(REMOVE_CRITERIA.criteriaObject)
-        return super.doFindAndModify(collectionName, query, fields, sort, entityClass, update, options)
+        val newQuery = Document(query)
+        newQuery.merge(REMOVE_CRITERIA.criteriaObject)
+        return super.doFindAndModify(collectionName, newQuery, fields, sort, entityClass, update, options)
     }
 
     override fun <T : Any?> doFindOne(
@@ -147,8 +149,21 @@ class ReactiveMongoSoftDeleteTemplate(
         entityClass: Class<T>,
         collation: Collation?
     ): Mono<T> {
-        query.merge(REMOVE_CRITERIA.criteriaObject)
-        return super.doFindOne(collectionName, query, fields, entityClass, collation)
+        val newQuery = Document(query)
+        newQuery.merge(REMOVE_CRITERIA.criteriaObject)
+        return super.doFindOne(collectionName, newQuery, fields, entityClass, collation)
+    }
+
+    override fun <S : Any?, T : Any?> findAndReplace(
+        query: Query,
+        replacement: S,
+        options: FindAndReplaceOptions,
+        entityType: Class<S>,
+        collectionName: String,
+        resultType: Class<T>
+    ): Mono<T> {
+        query.addCriteria(REMOVE_CRITERIA)
+        return super.findAndReplace(query, replacement, options, entityType, collectionName, resultType)
     }
 
     override fun <T : Any?> find(query: Query, entityClass: Class<T>): Flux<T> {
@@ -175,18 +190,6 @@ class ReactiveMongoSoftDeleteTemplate(
     ): Flux<T> {
         query.addCriteria(REMOVE_CRITERIA)
         return super.findDistinct(query, field, collectionName, entityClass, resultClass)
-    }
-
-    override fun <S : Any?, T : Any?> findAndReplace(
-        query: Query,
-        replacement: S,
-        options: FindAndReplaceOptions,
-        entityType: Class<S>,
-        collectionName: String,
-        resultType: Class<T>
-    ): Mono<T> {
-        query.addCriteria(REMOVE_CRITERIA)
-        return super.findAndReplace(query, replacement, options, entityType, collectionName, resultType)
     }
 
     override fun exists(query: Query, entityClass: Class<*>?, collectionName: String): Mono<Boolean> {
