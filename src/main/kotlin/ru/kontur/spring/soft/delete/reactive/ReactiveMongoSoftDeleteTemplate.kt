@@ -154,24 +154,45 @@ class ReactiveMongoSoftDeleteTemplate(
         return super.doFindOne(collectionName, newQuery, fields, entityClass, collation)
     }
 
-    override fun <S : Any?, T : Any?> findAndReplace(
-        query: Query,
-        replacement: S,
-        options: FindAndReplaceOptions,
-        entityType: Class<S>,
+    override fun <T : Any?> doFind(
         collectionName: String,
+        query: Document,
+        fields: Document,
+        entityClass: Class<T>,
+        preparer: FindPublisherPreparer
+    ): Flux<T> {
+        val newQuery = Document(query)
+        newQuery.merge(REMOVE_CRITERIA.criteriaObject)
+        return super.doFind(collectionName, newQuery, fields, entityClass, preparer)
+    }
+
+    override fun <T : Any?> doFindAndReplace(
+        collectionName: String,
+        mappedQuery: Document,
+        mappedFields: Document,
+        mappedSort: Document,
+        collation: com.mongodb.client.model.Collation,
+        entityType: Class<*>,
+        replacement: Document,
+        options: FindAndReplaceOptions,
         resultType: Class<T>
     ): Mono<T> {
-        query.addCriteria(REMOVE_CRITERIA)
-        return super.findAndReplace(query, replacement, options, entityType, collectionName, resultType)
+        val newQuery = Document(mappedQuery)
+        newQuery.merge(REMOVE_CRITERIA.criteriaObject)
+        return super.doFindAndReplace(
+            collectionName,
+            newQuery,
+            mappedFields,
+            mappedSort,
+            collation,
+            entityType,
+            replacement,
+            options,
+            resultType
+        )
     }
 
-    override fun <T : Any?> find(query: Query, entityClass: Class<T>): Flux<T> {
-        query.addCriteria(REMOVE_CRITERIA)
-        return super.find(query, entityClass)
-    }
-
-    override fun <T : Any?> findAll(entityClass: Class<T>, collectionName: String): Flux<T?> { // TODO overriding
+    override fun <T : Any?> findAll(entityClass: Class<T>, collectionName: String): Flux<T?> {
         val document = Document()
         document.merge(REMOVE_CRITERIA.criteriaObject)
         return executeFindMultiInternal(

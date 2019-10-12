@@ -1,5 +1,6 @@
 package ru.kontur.spring.soft.delete.reactive
 
+import com.mongodb.client.model.Collation
 import org.assertj.core.api.Assertions.assertThat
 import org.bson.types.ObjectId
 import org.junit.jupiter.api.BeforeEach
@@ -16,6 +17,7 @@ import org.springframework.data.mongodb.core.query.Update
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import ru.kontur.spring.soft.delete.reactive.core.SpringContainerBaseTest
+import java.util.*
 
 /**
  * @author Konstantin Volivach
@@ -103,6 +105,7 @@ internal class ReactiveMongoSoftDeleteTemplateTest : SpringContainerBaseTest() {
     fun testFindAndReplace() {
         val obj = saveDeletedObject()
         val query = Query().addCriteria(Criteria.where("_id").`is`(obj.id))
+        query.collation(org.springframework.data.mongodb.core.query.Collation.of(Locale.ENGLISH))
         val found = reactiveMongoTemplate.findAndReplace(
             query, TestObject(obj.id, "te", false)
         ).block()
